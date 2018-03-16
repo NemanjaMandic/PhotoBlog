@@ -4,4 +4,7 @@
     <string name="email_hint">Enter Email</string>
     <string name="login_btn_text">LOG IN TO ACCOUNT</string>
     <string name="login_reg_btn_text">NEED A NEW ACCOUNT?</string>
+    <string name="action_search_text">Search</string>
+    <string name="action_settings_text">Account Settings</string>
+    <string name="action_logout_text">Logout</string>
 </resources>
