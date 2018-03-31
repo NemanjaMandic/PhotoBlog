@@ -40,6 +40,14 @@ public class RegisterActivity extends AppCompatActivity {
         regProgressbar = (ProgressBar) findViewById(R.id.reg_progressbar);
 
 
+        regLoginBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+
+                finish();
+            }
+        });
+
         regButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -61,7 +69,9 @@ public class RegisterActivity extends AppCompatActivity {
 
                                 if(task.isSuccessful()){
 
-                                    sendToMain();
+                                    Intent intent = new Intent(RegisterActivity.this, SetupActivity.class);
+                                    startActivity(intent);
+                                    finish();
 
                                 }else{
 
