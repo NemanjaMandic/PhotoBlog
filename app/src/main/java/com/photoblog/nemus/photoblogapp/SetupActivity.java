@@ -55,6 +55,7 @@ public class SetupActivity extends AppCompatActivity {
                     // start picker to get image for cropping and then use the image in cropping activity
                     CropImage.activity()
                             .setGuidelines(CropImageView.Guidelines.ON)
+                            .setAspectRatio(1, 1)
                             .start(SetupActivity.this);
                 }
             }
@@ -73,7 +74,7 @@ public class SetupActivity extends AppCompatActivity {
                 mainImageUri = result.getUri();
 
                 setupImage.setImageURI(mainImageUri);
-                
+
             }else if(resultCode == CropImage.CROP_IMAGE_ACTIVITY_REQUEST_CODE){
 
                 Exception error = result.getError();

@@ -9,4 +9,6 @@
     <string name="action_logout_text">Logout</string>
     <string name="reg_btn_text">Create New Account</string>
     <string name="reg_login_text">Already Have An Account?</string>
+    <string name="setup_name_hint">Your Name</string>
+    <string name="setup_btn_name_text">Save Account Settings</string>
 </resources>
