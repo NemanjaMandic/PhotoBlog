@@ -2,7 +2,9 @@ package com.photoblog.nemus.photoblogapp;
 
 import android.*;
 import android.Manifest;
+import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.net.Uri;
 import android.os.Build;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
@@ -13,11 +15,15 @@ import android.support.v7.widget.Toolbar;
 import android.view.View;
 import android.widget.Toast;
 
+import com.theartofdev.edmodo.cropper.CropImage;
+import com.theartofdev.edmodo.cropper.CropImageView;
+
 import de.hdodenhof.circleimageview.CircleImageView;
 
 public class SetupActivity extends AppCompatActivity {
 
     private CircleImageView setupImage;
+    private Uri mainImageUri = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -27,6 +33,10 @@ public class SetupActivity extends AppCompatActivity {
         Toolbar setupToolbar = (Toolbar) findViewById(R.id.setupToolbar);
         setSupportActionBar(setupToolbar);
         getSupportActionBar();
+
+
+
+        // start cropping activity for pre-acquired image saved on the device
 
         setupImage = (CircleImageView) findViewById(R.id.setup_image);
 
@@ -42,10 +52,33 @@ public class SetupActivity extends AppCompatActivity {
                         Toast.makeText(SetupActivity.this, "You allready have permission", Toast.LENGTH_SHORT).show();
                     }
                 }else{
-                    Toast.makeText(SetupActivity.this, "Drrkicaa", Toast.LENGTH_SHORT).show();
+                    // start picker to get image for cropping and then use the image in cropping activity
+                    CropImage.activity()
+                            .setGuidelines(CropImageView.Guidelines.ON)
+                            .start(SetupActivity.this);
                 }
             }
         });
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+
+        if(requestCode == CropImage.CROP_IMAGE_ACTIVITY_REQUEST_CODE){
+
+            CropImage.ActivityResult result = CropImage.getActivityResult(data);
+
+            if(resultCode == RESULT_OK){
+
+                mainImageUri = result.getUri();
+
+                setupImage.setImageURI(mainImageUri);
+                
+            }else if(resultCode == CropImage.CROP_IMAGE_ACTIVITY_REQUEST_CODE){
+
+                Exception error = result.getError();
+            }
+        }
     }
 
     @Override
