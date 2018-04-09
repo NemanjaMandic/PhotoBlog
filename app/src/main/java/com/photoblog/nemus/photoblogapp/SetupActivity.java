@@ -12,9 +12,19 @@ import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.Toolbar;
+import android.text.TextUtils;
 import android.view.View;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.ProgressBar;
 import android.widget.Toast;
 
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
+import com.google.firebase.storage.UploadTask;
 import com.theartofdev.edmodo.cropper.CropImage;
 import com.theartofdev.edmodo.cropper.CropImageView;
 
@@ -23,7 +33,12 @@ import de.hdodenhof.circleimageview.CircleImageView;
 public class SetupActivity extends AppCompatActivity {
 
     private CircleImageView setupImage;
+    private EditText setupName;
+    private Button setupBtn;
     private Uri mainImageUri = null;
+    private StorageReference storageRef;
+    private FirebaseAuth mFirebaseAuth;
+    private ProgressBar setupProgres;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -32,13 +47,55 @@ public class SetupActivity extends AppCompatActivity {
 
         Toolbar setupToolbar = (Toolbar) findViewById(R.id.setupToolbar);
         setSupportActionBar(setupToolbar);
-        getSupportActionBar();
-
-
-
-        // start cropping activity for pre-acquired image saved on the device
+        getSupportActionBar().setTitle("Account Setup");
 
         setupImage = (CircleImageView) findViewById(R.id.setup_image);
+        setupName = (EditText) findViewById(R.id.setup_name);
+        setupBtn = (Button) findViewById(R.id.setup_btn);
+        setupProgres = (ProgressBar) findViewById(R.id.setup_progress);
+
+
+
+        mFirebaseAuth = FirebaseAuth.getInstance();
+        storageRef = FirebaseStorage.getInstance().getReference();
+
+        setupBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+
+                String userName = setupName.getText().toString();
+
+                String uName = mFirebaseAuth.getCurrentUser().getEmail().toString();
+                Toast.makeText(SetupActivity.this, uName, Toast.LENGTH_SHORT).show();
+
+                if(!TextUtils.isEmpty(userName) && mainImageUri != null){
+
+
+
+                    String userId = mFirebaseAuth.getCurrentUser().getUid();
+
+                    setupProgres.setVisibility(View.VISIBLE);
+
+                    StorageReference imagePath = storageRef.child("profile_images").child(userId + ".jpg");
+
+                    imagePath.putFile(mainImageUri).addOnCompleteListener(new OnCompleteListener<UploadTask.TaskSnapshot>() {
+                        @Override
+                        public void onComplete(@NonNull Task<UploadTask.TaskSnapshot> task) {
+
+                            if(task.isSuccessful()){
+                                Uri downloadUri = task.getResult().getDownloadUrl();
+                                Toast.makeText(SetupActivity.this, "The Image is uploaded", Toast.LENGTH_SHORT).show();
+                            }else{
+                                String error = task.getException().getMessage();
+                                Toast.makeText(SetupActivity.this, "Error: " + error, Toast.LENGTH_SHORT).show();
+                            }
+                            setupProgres.setVisibility(View.INVISIBLE);
+                        }
+                    });
+                }
+            }
+        });
+
 
         setupImage.setOnClickListener(new View.OnClickListener() {
             @Override
