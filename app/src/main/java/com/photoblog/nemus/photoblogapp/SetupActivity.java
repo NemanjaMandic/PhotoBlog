@@ -22,11 +22,15 @@ import android.widget.Toast;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 import com.google.firebase.storage.UploadTask;
 import com.theartofdev.edmodo.cropper.CropImage;
 import com.theartofdev.edmodo.cropper.CropImageView;
+
+import java.util.HashMap;
+import java.util.Map;
 
 import de.hdodenhof.circleimageview.CircleImageView;
 
@@ -38,6 +42,7 @@ public class SetupActivity extends AppCompatActivity {
     private Uri mainImageUri = null;
     private StorageReference storageRef;
     private FirebaseAuth mFirebaseAuth;
+    private FirebaseFirestore firebaseFirestore;
     private ProgressBar setupProgres;
 
     @Override
@@ -48,6 +53,8 @@ public class SetupActivity extends AppCompatActivity {
         Toolbar setupToolbar = (Toolbar) findViewById(R.id.setupToolbar);
         setSupportActionBar(setupToolbar);
         getSupportActionBar().setTitle("Account Setup");
+
+        firebaseFirestore = FirebaseFirestore.getInstance();
 
         setupImage = (CircleImageView) findViewById(R.id.setup_image);
         setupName = (EditText) findViewById(R.id.setup_name);
@@ -63,7 +70,7 @@ public class SetupActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
 
-                String userName = setupName.getText().toString();
+                final String userName = setupName.getText().toString();
 
                 String uName = mFirebaseAuth.getCurrentUser().getEmail().toString();
                 Toast.makeText(SetupActivity.this, uName, Toast.LENGTH_SHORT).show();
@@ -72,7 +79,7 @@ public class SetupActivity extends AppCompatActivity {
 
 
 
-                    String userId = mFirebaseAuth.getCurrentUser().getUid();
+                    final String userId = mFirebaseAuth.getCurrentUser().getUid();
 
                     setupProgres.setVisibility(View.VISIBLE);
 
@@ -83,11 +90,39 @@ public class SetupActivity extends AppCompatActivity {
                         public void onComplete(@NonNull Task<UploadTask.TaskSnapshot> task) {
 
                             if(task.isSuccessful()){
+
                                 Uri downloadUri = task.getResult().getDownloadUrl();
-                                Toast.makeText(SetupActivity.this, "The Image is uploaded", Toast.LENGTH_SHORT).show();
+
+                                Map<String, String> userMap = new HashMap<String, String>();
+                                userMap.put("name", userName);
+                                userMap.put("image", downloadUri.toString());
+
+                                firebaseFirestore.collection("Users")
+                                        .document(userId)
+                                        .set(userMap).addOnCompleteListener(new OnCompleteListener<Void>() {
+                                        @Override
+                                        public void onComplete(@NonNull Task<Void> task) {
+
+                                            if(task.isSuccessful()){
+
+                                                Toast.makeText(SetupActivity.this, "The user settings are updated: ", Toast.LENGTH_SHORT).show();
+                                                Intent mainIntent = new Intent(SetupActivity.this, MainActivity.class);
+                                                startActivity(mainIntent);
+                                                finish();
+
+                                            }else{
+
+                                                String error = task.getException().getMessage();
+                                                Toast.makeText(SetupActivity.this, "FIRESTORE ERROR: " + error, Toast.LENGTH_SHORT).show();
+                                            }
+                                        }
+                                });
+
                             }else{
+
                                 String error = task.getException().getMessage();
-                                Toast.makeText(SetupActivity.this, "Error: " + error, Toast.LENGTH_SHORT).show();
+                                Toast.makeText(SetupActivity.this, "IMAGE ERROR: " + error, Toast.LENGTH_SHORT).show();
+
                             }
                             setupProgres.setVisibility(View.INVISIBLE);
                         }
@@ -103,20 +138,30 @@ public class SetupActivity extends AppCompatActivity {
 
                 if(Build.VERSION.SDK_INT > Build.VERSION_CODES.M){
                     if(ContextCompat.checkSelfPermission(SetupActivity.this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED){
+
                         Toast.makeText(SetupActivity.this, "Permision denied", Toast.LENGTH_SHORT).show();
                         ActivityCompat.requestPermissions(SetupActivity.this, new String[]{ Manifest.permission.READ_EXTERNAL_STORAGE}, 1);
+
                     }else{
-                        Toast.makeText(SetupActivity.this, "You allready have permission", Toast.LENGTH_SHORT).show();
+
+                        bringImagePicker();
                     }
+                    
                 }else{
-                    // start picker to get image for cropping and then use the image in cropping activity
-                    CropImage.activity()
-                            .setGuidelines(CropImageView.Guidelines.ON)
-                            .setAspectRatio(1, 1)
-                            .start(SetupActivity.this);
+
+                    bringImagePicker();
+
                 }
             }
         });
+    }
+
+    private void bringImagePicker() {
+        // start picker to get image for cropping and then use the image in cropping activity
+        CropImage.activity()
+                .setGuidelines(CropImageView.Guidelines.ON)
+                .setAspectRatio(1, 1)
+                .start(SetupActivity.this);
     }
 
     @Override
