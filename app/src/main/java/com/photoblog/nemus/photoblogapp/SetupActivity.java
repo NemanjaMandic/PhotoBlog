@@ -115,6 +115,7 @@ public class SetupActivity extends AppCompatActivity {
                                                 String error = task.getException().getMessage();
                                                 Toast.makeText(SetupActivity.this, "FIRESTORE ERROR: " + error, Toast.LENGTH_SHORT).show();
                                             }
+
                                         }
                                 });
 
@@ -122,9 +123,9 @@ public class SetupActivity extends AppCompatActivity {
 
                                 String error = task.getException().getMessage();
                                 Toast.makeText(SetupActivity.this, "IMAGE ERROR: " + error, Toast.LENGTH_SHORT).show();
-
+                                setupProgres.setVisibility(View.INVISIBLE);
                             }
-                            setupProgres.setVisibility(View.INVISIBLE);
+
                         }
                     });
                 }
