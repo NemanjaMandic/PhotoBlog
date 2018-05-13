@@ -19,9 +19,12 @@ import android.widget.EditText;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.request.RequestOptions;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
@@ -45,6 +48,10 @@ public class SetupActivity extends AppCompatActivity {
     private FirebaseFirestore firebaseFirestore;
     private ProgressBar setupProgres;
 
+
+    private String userId;
+    private boolean isChanged = false;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -56,78 +63,102 @@ public class SetupActivity extends AppCompatActivity {
 
         firebaseFirestore = FirebaseFirestore.getInstance();
 
+
+
         setupImage = (CircleImageView) findViewById(R.id.setup_image);
         setupName = (EditText) findViewById(R.id.setup_name);
         setupBtn = (Button) findViewById(R.id.setup_btn);
         setupProgres = (ProgressBar) findViewById(R.id.setup_progress);
 
-
+        setupProgres.setVisibility(View.VISIBLE);
+        setupBtn.setEnabled(false);
 
         mFirebaseAuth = FirebaseAuth.getInstance();
+        userId = mFirebaseAuth.getCurrentUser().getUid();
+
         storageRef = FirebaseStorage.getInstance().getReference();
+
+        firebaseFirestore.collection("Users")
+                .document(userId)
+                .get()
+                .addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
+                    @Override
+                    public void onComplete(@NonNull Task<DocumentSnapshot> task) {
+
+                        if(task.isSuccessful()){
+
+                            if(task.getResult().exists()){
+
+                                String name = task.getResult().getString("name");
+                                String image = task.getResult().getString("image");
+
+                                mainImageUri = Uri.parse(image);
+
+                                setupName.setText(name);
+
+                                RequestOptions placeholderRequest = new RequestOptions();
+
+                                placeholderRequest.placeholder(R.drawable.profile_default_male);
+
+                                Glide.with(SetupActivity.this).setDefaultRequestOptions(placeholderRequest).load(image).into(setupImage);
+
+                            }else{
+
+                                Toast.makeText(SetupActivity.this, "DATA NOT EXIST", Toast.LENGTH_SHORT).show();
+                            }
+                        }else{
+
+                            String error = task.getException().getMessage();
+                            Toast.makeText(SetupActivity.this, "Firestore retrieve error: " + error, Toast.LENGTH_SHORT).show();
+
+                        }
+
+                        setupProgres.setVisibility(View.INVISIBLE);
+                        setupBtn.setEnabled(true);
+                    }
+        });
 
         setupBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
 
                 final String userName = setupName.getText().toString();
+                setupProgres.setVisibility(View.VISIBLE);
 
-                String uName = mFirebaseAuth.getCurrentUser().getEmail().toString();
-                Toast.makeText(SetupActivity.this, uName, Toast.LENGTH_SHORT).show();
-
-                if(!TextUtils.isEmpty(userName) && mainImageUri != null){
+                if(isChanged) {
 
 
+                    String uName = mFirebaseAuth.getCurrentUser().getEmail().toString();
+                    Toast.makeText(SetupActivity.this, uName, Toast.LENGTH_SHORT).show();
 
-                    final String userId = mFirebaseAuth.getCurrentUser().getUid();
+                    if (!TextUtils.isEmpty(userName) && mainImageUri != null) {
 
-                    setupProgres.setVisibility(View.VISIBLE);
 
-                    StorageReference imagePath = storageRef.child("profile_images").child(userId + ".jpg");
+                        //userId = mFirebaseAuth.getCurrentUser().getUid();
 
-                    imagePath.putFile(mainImageUri).addOnCompleteListener(new OnCompleteListener<UploadTask.TaskSnapshot>() {
-                        @Override
-                        public void onComplete(@NonNull Task<UploadTask.TaskSnapshot> task) {
+                        StorageReference imagePath = storageRef.child("profile_images").child(userId + ".jpg");
 
-                            if(task.isSuccessful()){
+                        imagePath.putFile(mainImageUri).addOnCompleteListener(new OnCompleteListener<UploadTask.TaskSnapshot>() {
+                            @Override
+                            public void onComplete(@NonNull Task<UploadTask.TaskSnapshot> task) {
 
-                                Uri downloadUri = task.getResult().getDownloadUrl();
+                                if (task.isSuccessful()) {
 
-                                Map<String, String> userMap = new HashMap<String, String>();
-                                userMap.put("name", userName);
-                                userMap.put("image", downloadUri.toString());
+                                    storeFirestore(task, userName);
 
-                                firebaseFirestore.collection("Users")
-                                        .document(userId)
-                                        .set(userMap).addOnCompleteListener(new OnCompleteListener<Void>() {
-                                        @Override
-                                        public void onComplete(@NonNull Task<Void> task) {
+                                } else {
 
-                                            if(task.isSuccessful()){
+                                    String error = task.getException().getMessage();
+                                    Toast.makeText(SetupActivity.this, "IMAGE ERROR: " + error, Toast.LENGTH_SHORT).show();
+                                    setupProgres.setVisibility(View.INVISIBLE);
+                                }
 
-                                                Toast.makeText(SetupActivity.this, "The user settings are updated: ", Toast.LENGTH_SHORT).show();
-                                                Intent mainIntent = new Intent(SetupActivity.this, MainActivity.class);
-                                                startActivity(mainIntent);
-                                                finish();
-
-                                            }else{
-
-                                                String error = task.getException().getMessage();
-                                                Toast.makeText(SetupActivity.this, "FIRESTORE ERROR: " + error, Toast.LENGTH_SHORT).show();
-                                            }
-
-                                        }
-                                });
-
-                            }else{
-
-                                String error = task.getException().getMessage();
-                                Toast.makeText(SetupActivity.this, "IMAGE ERROR: " + error, Toast.LENGTH_SHORT).show();
-                                setupProgres.setVisibility(View.INVISIBLE);
                             }
+                        });
+                    }
+                }else{
 
-                        }
-                    });
+                    storeFirestore(null, userName);
                 }
             }
         });
@@ -157,6 +188,42 @@ public class SetupActivity extends AppCompatActivity {
         });
     }
 
+    private void storeFirestore(@NonNull Task<UploadTask.TaskSnapshot> task, String userName) {
+
+        Uri downloadUri;
+        if(task != null) {
+             downloadUri = task.getResult().getDownloadUrl();
+        }else{
+             downloadUri = mainImageUri;
+        }
+
+        Map<String, String> userMap = new HashMap<String, String>();
+        userMap.put("name", userName);
+        userMap.put("image", downloadUri.toString());
+
+        firebaseFirestore.collection("Users")
+                .document(userId)
+                .set(userMap).addOnCompleteListener(new OnCompleteListener<Void>() {
+            @Override
+            public void onComplete(@NonNull Task<Void> task) {
+
+                if(task.isSuccessful()){
+
+                    Toast.makeText(SetupActivity.this, "The user settings are updated: ", Toast.LENGTH_SHORT).show();
+                    Intent mainIntent = new Intent(SetupActivity.this, MainActivity.class);
+                    startActivity(mainIntent);
+                    finish();
+
+                }else{
+
+                    String error = task.getException().getMessage();
+                    Toast.makeText(SetupActivity.this, "FIRESTORE ERROR: " + error, Toast.LENGTH_SHORT).show();
+                }
+
+            }
+        });
+    }
+
     private void bringImagePicker() {
         // start picker to get image for cropping and then use the image in cropping activity
         CropImage.activity()
@@ -177,6 +244,8 @@ public class SetupActivity extends AppCompatActivity {
                 mainImageUri = result.getUri();
 
                 setupImage.setImageURI(mainImageUri);
+
+                isChanged = true;
 
             }else if(resultCode == CropImage.CROP_IMAGE_ACTIVITY_REQUEST_CODE){
 
