@@ -122,16 +122,18 @@ public class SetupActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
 
+
                 final String userName = setupName.getText().toString();
-                setupProgres.setVisibility(View.VISIBLE);
 
-                if(isChanged) {
+                if (!TextUtils.isEmpty(userName) && mainImageUri != null) {
+
+                    setupProgres.setVisibility(View.VISIBLE);
+
+                    if (isChanged) {
 
 
-                    String uName = mFirebaseAuth.getCurrentUser().getEmail().toString();
-                    Toast.makeText(SetupActivity.this, uName, Toast.LENGTH_SHORT).show();
-
-                    if (!TextUtils.isEmpty(userName) && mainImageUri != null) {
+                        String uName = mFirebaseAuth.getCurrentUser().getEmail().toString();
+                        Toast.makeText(SetupActivity.this, uName, Toast.LENGTH_SHORT).show();
 
 
                         //userId = mFirebaseAuth.getCurrentUser().getUid();
@@ -155,12 +157,14 @@ public class SetupActivity extends AppCompatActivity {
 
                             }
                         });
-                    }
-                }else{
 
-                    storeFirestore(null, userName);
+                    } else {
+
+                        storeFirestore(null, userName);
+                    }
                 }
             }
+
         });
 
 
